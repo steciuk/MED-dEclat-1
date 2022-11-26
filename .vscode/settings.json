@@ -14,7 +14,11 @@
     "cSpell.language": "en,pl",
     "python.linting.mypyEnabled": true,
     "python.linting.enabled": true,
-    "cSpell.words": ["consts", "venv"],
+    "cSpell.words": [
+        "consts",
+        "nltk",
+        "venv"
+    ],
     "prettier.enable": false,
     "isort.args": ["--profile", "black"],
     "python.analysis.inlayHints.functionReturnTypes": true,
