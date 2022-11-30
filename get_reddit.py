@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Literal, Union
 
 import click
@@ -58,7 +59,7 @@ def stem(stemmer: nltk.stem.PorterStemmer, title: str) -> list[str]:
     "--directory",
     default="data",
     show_default=True,
-    type=click.Path(exists=True),
+    type=click.Path(),
     help="Directory to save the data",
 )
 def get_reddit_data(
@@ -88,10 +89,10 @@ def get_reddit_data(
         print("Invalid listing type")
 
     # create dataframe
-    df = pd.DataFrame([post.title for post in posts], columns=["title"])
+    data_df = pd.DataFrame([post.title for post in posts], columns=["title"])
 
     # remove all non-alpha characters
-    df["title"] = df["title"].apply(lambda x: re.sub("[^a-zA-Z\s]", "", x))
+    data_df["title"] = data_df["title"].apply(lambda x: re.sub("[^a-zA-Z\s]", "", x))
 
     # stem words
     try:
@@ -100,17 +101,44 @@ def get_reddit_data(
         nltk.download("punkt")
 
     ps = nltk.stem.PorterStemmer()
-    df["stemmed"] = df["title"].apply(lambda x: stem(ps, x))
+    data_df["tokens"] = data_df["title"].apply(lambda x: stem(ps, x))
+
+    # remove duplicates
+    data_df["tokens"] = data_df["tokens"].apply(lambda x: list(dict.fromkeys(x)))
+
+    # convert to token ids
+    tokens_map: dict[str, int] = {}
+    for i, row in data_df.iterrows():
+        row_token_ids = []
+        for token in row["tokens"]:
+            token_id = tokens_map.get(token)
+            if token_id is None:
+                token_id = len(tokens_map)
+                row_token_ids.append(token_id)
+                tokens_map[token] = token_id
+            else:
+                row_token_ids.append(token_id)
+
+        data_df.at[i, "tokens"] = row_token_ids
+
+    tokens_map_df = pd.DataFrame(
+        list(tokens_map.items()), columns=["token", "token_id"]
+    ).set_index("token_id")
 
     # save to json
-    file_path = f"{directory}/{subreddit}_{num_posts}_{listing}"
+    output_dir = f"{directory}/{subreddit}_{num_posts}_{listing}"
     if listing in ["top", "controversial"]:
-        file_path += f"_{time_filter}"
+        output_dir += f"_{time_filter}"
 
     time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path += f"_{time}.json"
+    output_dir += f"_{time}"
 
-    df.to_json(file_path, indent=2)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    data_df.to_json(f"{output_dir}/data.json", indent=2)
+    tokens_map_df.to_json(f"{output_dir}/tokens_map.json", indent=2)
+
+    print(f"Data saved to {output_dir}")
 
 
 if __name__ == "__main__":
