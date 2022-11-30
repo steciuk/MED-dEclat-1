@@ -1,9 +1,5 @@
-from hello.hello import Hello
-
-
 def main() -> None:
-    hello = Hello("abc")
-    hello.greet()
+    pass
 
 
 if __name__ == "__main__":

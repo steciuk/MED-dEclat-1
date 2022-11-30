@@ -28,6 +28,36 @@ def stem(stemmer: nltk.stem.PorterStemmer, title: str) -> list[str]:
     return [stemmer.stem(w) for w in word_tokens]
 
 
+def remove_non_alpha(series: "pd.Series[str]") -> "pd.Series[str]":
+    return series.apply(lambda x: re.sub(r"[^a-zA-Z\s]", "", x))
+
+
+def remove_duplicates_in_rows(series: "pd.Series[list[str]]") -> "pd.Series[list[str]]":
+    return series.apply(lambda x: list(dict.fromkeys(x)))
+
+
+def create_token_ids(
+    series: "pd.Series[list[str]]",
+) -> tuple["pd.Series[list[int]]", dict[str, int]]:
+    tokens_map: dict[str, int] = {}
+    token_ids: dict[int, list[int]] = {}
+
+    for i, tokens in series.items():
+        row_token_ids: list[int] = []
+        for token in tokens:
+            token_id: int | None = tokens_map.get(token)
+            if token_id is None:
+                token_id = len(tokens_map)
+                row_token_ids.append(token_id)
+                tokens_map[token] = token_id
+            else:
+                row_token_ids.append(token_id)
+
+        token_ids[i] = row_token_ids
+
+    return pd.Series(token_ids, dtype=object), tokens_map
+
+
 @click.command()
 @click.option("-s", "--subreddit", required=True, help="Subreddit to scrape")
 @click.option(
@@ -74,7 +104,6 @@ def get_reddit_data(
     )
     subreddit = subreddit.lower()
 
-    # get posts
     sub = reddit.subreddit(subreddit)
     posts = []
     if listing == "hot":
@@ -88,44 +117,28 @@ def get_reddit_data(
     else:
         print("Invalid listing type")
 
-    # create dataframe
-    data_df = pd.DataFrame([post.title for post in posts], columns=["title"])
+    data_df = pd.DataFrame(
+        [[post.title, None] for post in posts], columns=["title", "tokens"]
+    )
 
-    # remove all non-alpha characters
-    data_df["title"] = data_df["title"].apply(lambda x: re.sub("[^a-zA-Z\s]", "", x))
+    titles: pd.Series[str] = remove_non_alpha(data_df["title"])
 
-    # stem words
     try:
         nltk.data.find("tokenizers/punkt")
     except LookupError:
         nltk.download("punkt")
 
     ps = nltk.stem.PorterStemmer()
-    data_df["tokens"] = data_df["title"].apply(lambda x: stem(ps, x))
+    stemmed_titles: "pd.Series[list[str]]" = titles.apply(lambda x: stem(ps, x))
 
-    # remove duplicates
-    data_df["tokens"] = data_df["tokens"].apply(lambda x: list(dict.fromkeys(x)))
+    stemmed_titles = remove_duplicates_in_rows(stemmed_titles)
 
-    # convert to token ids
-    tokens_map: dict[str, int] = {}
-    for i, row in data_df.iterrows():
-        row_token_ids = []
-        for token in row["tokens"]:
-            token_id = tokens_map.get(token)
-            if token_id is None:
-                token_id = len(tokens_map)
-                row_token_ids.append(token_id)
-                tokens_map[token] = token_id
-            else:
-                row_token_ids.append(token_id)
-
-        data_df.at[i, "tokens"] = row_token_ids
+    data_df["tokens"], tokens_map = create_token_ids(stemmed_titles)
 
     tokens_map_df = pd.DataFrame(
         list(tokens_map.items()), columns=["token", "token_id"]
     ).set_index("token_id")
 
-    # save to json
     output_dir = f"{directory}/{subreddit}_{num_posts}_{listing}"
     if listing in ["top", "controversial"]:
         output_dir += f"_{time_filter}"
