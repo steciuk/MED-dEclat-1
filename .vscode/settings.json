@@ -16,6 +16,8 @@
     "python.linting.enabled": true,
     "cSpell.words": [
         "consts",
+        "declat",
+        "iterrows",
         "nltk",
         "venv"
     ],
