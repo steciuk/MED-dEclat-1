@@ -124,28 +124,38 @@ def build_declat_tree(layer: list[DeclatNode], min_support) -> None:
 
 
 def declat(directory: str, min_support: int) -> None:
+    print("Reading data...")
     data_df, tokens_map_df = load_data(directory)
 
+    print("Validating tokens_map.json...")
     validate_tokens_map(tokens_map_df)
     tokens_map: dict[int, str] = {
         token_id: row["token"] for token_id, row in tokens_map_df.iterrows()
     }
     all_tokens_ids: set[int] = set(tokens_map.keys())
 
+    print("Validating data.json...")
     validate_data(data_df, all_tokens_ids)
     data: dict[int, list[int]] = {
         transaction_id: row["tokens"] for transaction_id, row in data_df.iterrows()
     }
 
+    print("Creating dif-sets...")
     dif_sets_map: dict[int, set[int]] = get_dif_sets_map(data, all_tokens_ids)
     num_transactions: int = len(data)
 
+    print("Building declat root...")
     declat_tree: DeclatNode = build_declat_root(
         dif_sets_map, num_transactions, min_support
     )
 
+    print("Building declat tree...")
     build_declat_tree(declat_tree.children, min_support)
+
+    print("Decoding tokens...")
     declat_tree.decode(tokens_map)
+
+    print("All good! Here is the declat tree:")
     print(declat_tree)
 
 
@@ -160,8 +170,6 @@ def declat(directory: str, min_support: int) -> None:
     "-s",
     "--support",
     type=click.IntRange(min=1),
-    default=2,
-    show_default=True,
     help="Minimum support for frequent itemsets",
 )
 def declat_cli(directory: str, support: int) -> None:

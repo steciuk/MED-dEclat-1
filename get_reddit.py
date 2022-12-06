@@ -103,8 +103,9 @@ def get_reddit_data(
         client_id=CLIENT_ID, client_secret=CLIENT_SECRET, user_agent="EitiMed"
     )
     subreddit = subreddit.lower()
-
     sub = reddit.subreddit(subreddit)
+
+    print("Getting data from Reddit...")
     posts = []
     if listing == "hot":
         posts = sub.hot(limit=num_posts)
@@ -121,6 +122,7 @@ def get_reddit_data(
         [[post.title, None] for post in posts], columns=["title", "tokens"]
     )
 
+    print("Removing non-alphabetic characters...")
     titles: pd.Series[str] = remove_non_alpha(data_df["title"])
 
     try:
@@ -128,17 +130,20 @@ def get_reddit_data(
     except LookupError:
         nltk.download("punkt")
 
+    print("Stemming titles...")
     ps = nltk.stem.PorterStemmer()
     stemmed_titles: "pd.Series[list[str]]" = titles.apply(lambda x: stem(ps, x))
 
+    print("Removing duplicated tokens...")
     stemmed_titles = remove_duplicates_in_rows(stemmed_titles)
 
+    print("Creating token ids...")
     data_df["tokens"], tokens_map = create_token_ids(stemmed_titles)
-
     tokens_map_df = pd.DataFrame(
         list(tokens_map.items()), columns=["token", "token_id"]
     ).set_index("token_id")
 
+    print("Saving data...")
     output_dir = f"{directory}/{subreddit}_{num_posts}_{listing}"
     if listing in ["top", "controversial"]:
         output_dir += f"_{time_filter}"
@@ -151,7 +156,7 @@ def get_reddit_data(
     data_df.to_json(f"{output_dir}/data.json", indent=2)
     tokens_map_df.to_json(f"{output_dir}/tokens_map.json", indent=2)
 
-    print(f"Data saved to {output_dir}")
+    print(f"All good! Data saved to {output_dir}")
 
 
 if __name__ == "__main__":
