@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import click
 import pandas as pd
 
@@ -10,53 +8,53 @@ def load_data(directory: str) -> tuple[pd.DataFrame, pd.DataFrame]:
             f"{directory}/tokens_map.json"
         ).sort_index()
     except FileNotFoundError:
-        print("No tokens_map.json file found in the directory")
-        exit(1)
+        raise FileNotFoundError("No tokens_map.json file found in the directory")
 
     try:
         data_df: pd.DataFrame = pd.read_json(f"{directory}/data.json").sort_index()
         return data_df, tokens_map_df
     except FileNotFoundError:
         print("No data.json file found in the directory")
-        exit(1)
+        raise FileNotFoundError("No data.json file found in the directory")
 
 
 def validate_data(data_df: pd.DataFrame, all_tokens_ids: set[int]) -> None:
     if "tokens" not in data_df.columns:
-        print("No tokens column found in data.json")
-        exit(1)
+        raise ValueError("No tokens column found in data.json")
 
     if not all(isinstance(tokens, list) for tokens in data_df["tokens"]):
-        print("Values in tokens column are not lists")
-        exit(1)
+        raise ValueError("Values in tokens column are not lists")
 
     for tokens in data_df["tokens"]:
         for token in tokens:
             if token not in all_tokens_ids:
-                print(f"Token {token} not found in tokens_map.json")
-                exit(1)
+                raise ValueError(f"Token {token} not found in tokens_map.json")
 
 
 def validate_tokens_map(tokens_map_df: pd.DataFrame) -> None:
     if "token" not in tokens_map_df.columns:
-        print("No token column found in tokens_map.json")
-        exit(1)
+        raise ValueError("No token column found in tokens_map.json")
 
     if not all(isinstance(token, str) for token in tokens_map_df["token"]):
-        print("Values in token column are not strings")
-        exit(1)
+        raise ValueError("Values in token column are not strings")
+
+    if len(tokens_map_df["token"]) != len(set(tokens_map_df["token"])):
+        raise ValueError("Duplicate tokens found in tokens_map.json")
+
+    if len(tokens_map_df.index) != len(set(tokens_map_df.index)):
+        raise ValueError("Duplicate tokens ids found in tokens_map.json")
 
 
 def get_dif_sets_map(
     data: dict[int, list[int]], all_tokens_ids: set[int]
 ) -> dict[int, set[int]]:
-    dif_map: dict[int, set[int]] = defaultdict(set)
+    dif_map: dict[int, set[int]] = {token_id: set() for token_id in all_tokens_ids}
     for transaction_id, tokens_ids in data.items():
         non_existing_tokens_ids: set[int] = all_tokens_ids - set(tokens_ids)
         for token_id in non_existing_tokens_ids:
             dif_map[token_id].add(transaction_id)
 
-    return dict(dif_map)
+    return dif_map
 
 
 class DeclatNode:
@@ -77,6 +75,16 @@ class DeclatNode:
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DeclatNode):
+            return False
+
+        return (
+            self.tokens_ids == other.tokens_ids
+            and self.support == other.support
+            and self.dif_set == other.dif_set
+        )
 
     def add_child(self, child: "DeclatNode") -> None:
         self.children.append(child)
