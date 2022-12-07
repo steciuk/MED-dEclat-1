@@ -1,5 +1,55 @@
+import json
+
 import click
 import pandas as pd
+
+
+class DeclatNode:
+    def __init__(self, tokens_ids: list[int], support: int, dif_set: set[int]) -> None:
+        self.tokens_ids: list[int] = tokens_ids
+        self.tokens: list[str] = []
+        self.support: int = support
+        self.dif_set: set[int] = dif_set
+        self.children: list[DeclatNode] = []
+
+    def __repr__(self, layer=0) -> str:
+        repr: str = "  " * layer
+        repr += f"{self.support} - {self.tokens if len(self.tokens) > 0 else self.tokens_ids}\n"
+        for child in self.children:
+            repr += f"{child.__repr__(layer + 1)}"
+
+        return repr
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DeclatNode):
+            return False
+
+        return (
+            self.tokens_ids == other.tokens_ids
+            and self.support == other.support
+            and self.dif_set == other.dif_set
+        )
+
+    def add_child(self, child: "DeclatNode") -> None:
+        self.children.append(child)
+
+    def decode(self, tokens_map: dict[int, str]) -> None:
+        self.tokens = [tokens_map[token_id] for token_id in self.tokens_ids]
+        for child in self.children:
+            child.decode(tokens_map)
+
+
+class DeclatJSONEncoder(json.JSONEncoder):
+    def default(self, o: object) -> object:
+        if isinstance(o, DeclatNode):
+            return o.__dict__
+        if isinstance(o, set):
+            return list(o)
+
+        return json.JSONEncoder.default(self, o)
 
 
 def load_data(directory: str) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -57,44 +107,6 @@ def get_dif_sets_map(
     return dif_map
 
 
-class DeclatNode:
-    def __init__(self, tokens_ids: list[int], support: int, dif_set: set[int]) -> None:
-        self.tokens_ids: list[int] = tokens_ids
-        self.tokens: list[str] = []
-        self.support: int = support
-        self.dif_set: set[int] = dif_set
-        self.children: list[DeclatNode] = []
-
-    def __repr__(self, layer=0) -> str:
-        repr: str = "  " * layer
-        repr += f"{self.support} - {self.tokens if len(self.tokens) > 0 else self.tokens_ids}\n"
-        for child in self.children:
-            repr += f"{child.__repr__(layer + 1)}"
-
-        return repr
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, DeclatNode):
-            return False
-
-        return (
-            self.tokens_ids == other.tokens_ids
-            and self.support == other.support
-            and self.dif_set == other.dif_set
-        )
-
-    def add_child(self, child: "DeclatNode") -> None:
-        self.children.append(child)
-
-    def decode(self, tokens_map: dict[int, str]) -> None:
-        self.tokens = [tokens_map[token_id] for token_id in self.tokens_ids]
-        for child in self.children:
-            child.decode(tokens_map)
-
-
 def build_declat_root(
     dif_sets_map: dict[int, set[int]], num_transactions: int, min_support: int
 ) -> DeclatNode:
@@ -131,6 +143,12 @@ def build_declat_tree(layer: list[DeclatNode], min_support) -> None:
     build_declat_tree(new_layer, min_support)
 
 
+def save_declat_tree(declat_tree: DeclatNode, directory: str, min_support: int) -> None:
+    result = {"min_support": min_support, "tree": declat_tree}
+    with open(f"{directory}/declat.json", "w") as file:
+        json.dump(result, file, indent=2, cls=DeclatJSONEncoder)
+
+
 def declat(directory: str, min_support: int) -> None:
     print("Reading data...")
     data_df, tokens_map_df = load_data(directory)
@@ -163,20 +181,24 @@ def declat(directory: str, min_support: int) -> None:
     print("Decoding tokens...")
     declat_tree.decode(tokens_map)
 
-    print("All good! Here is the declat tree:")
-    print(declat_tree)
+    print("Saving declat tree...")
+    save_declat_tree(declat_tree, directory, min_support)
+
+    print(f"All good! Declat tree saved to {directory}/declat.json")
 
 
 @click.command()
 @click.option(
     "-d",
     "--directory",
+    required=True,
     type=click.Path(exists=True),
     help="Directory to load the data from",
 )
 @click.option(
     "-s",
     "--support",
+    required=True,
     type=click.IntRange(min=1),
     help="Minimum support for frequent itemsets",
 )
