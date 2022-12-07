@@ -163,6 +163,7 @@ def get_reddit_data(
                 "subreddit": subreddit,
                 "listing": listing,
                 "time_filter": time_filter,
+                "num_posts": num_posts,
             },
             file,
             indent=2,
