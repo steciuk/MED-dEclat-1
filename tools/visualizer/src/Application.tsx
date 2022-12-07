@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import FilePicker from './components/common/FilePicker';
+import Rozette from './components/common/Rozette';
 import MetadataDisplay from './components/MetadataDisplay';
 
 const Application = () => {
@@ -48,10 +49,22 @@ const Application = () => {
 	}, [files]);
 
 	return (
-		<div style={{ backgroundColor: 'lightgray', height: '100vh' }}>
-			<div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+		<div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+			<div style={{ display: 'flex', justifyContent: 'space-between', margin: '1rem' }}>
 				<FilePicker handleFilesChange={handleFilesChange} />
 				<MetadataDisplay metadataFile={metadataFile} />
+			</div>
+			<div
+				style={{
+					display: 'flex',
+					margin: '0 1rem 1rem 1rem',
+					flexGrow: '1',
+					boxShadow: '8px 8px 24px 0px rgba(66, 68, 90, 1)',
+				}}
+			>
+				<Rozette title="Tokens map">Hello</Rozette>
+				<Rozette title="Data">Hello</Rozette>
+				<Rozette title="Declat tree">Hello</Rozette>
 			</div>
 		</div>
 	);
