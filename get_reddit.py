@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -155,6 +156,17 @@ def get_reddit_data(
 
     data_df.to_json(f"{output_dir}/data.json", indent=2)
     tokens_map_df.to_json(f"{output_dir}/tokens_map.json", indent=2)
+
+    with open(f"{output_dir}/metadata.json", "w") as file:
+        json.dump(
+            {
+                "subreddit": subreddit,
+                "listing": listing,
+                "time_filter": time_filter,
+            },
+            file,
+            indent=2,
+        )
 
     print(f"All good! Data saved to {output_dir}")
 
