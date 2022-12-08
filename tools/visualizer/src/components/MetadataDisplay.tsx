@@ -11,19 +11,24 @@ const MetadataDisplay = (props: { metadataFile: File | null }) => {
 	const [metadata, setMetadata] = useState<Metadata | null>(null);
 
 	const onFileRead = (content: string) => {
-		let metadata: any = null;
+		let newMetadata: any = null;
 		try {
-			metadata = JSON.parse(content);
+			newMetadata = JSON.parse(content);
 		} catch (e) {
-			showFileError('metadata.json');
+			showFileError('Could not parse metadata.json');
 			setMetadata(null);
 			return;
 		}
 
-		if (vadivdateMetadata(metadata)) {
-			setMetadata(metadata);
-		} else {
-			showFileError('metadata.json');
+		try {
+			if (validateMetadata(newMetadata)) {
+				setMetadata(newMetadata);
+			} else {
+				showFileError('Could not parse metadata.json');
+				setMetadata(null);
+			}
+		} catch (e: any) {
+			showFileError(e?.message ?? 'Could not parse metadata.json');
 			setMetadata(null);
 		}
 	};
@@ -65,17 +70,21 @@ const MetadataDisplay = (props: { metadataFile: File | null }) => {
 	);
 };
 
-function vadivdateMetadata(metadata: any): metadata is Metadata {
-	if (typeof metadata !== 'object' || metadata === null) return false;
-	if (!('subreddit' in metadata) || typeof metadata.subreddit !== 'string') return false;
-	if (!('listing' in metadata) || !enumHasValue(Listing, metadata.listing)) return false;
-	if (!('num_posts' in metadata) || typeof metadata.num_posts !== 'number') return false;
+function validateMetadata(metadata: any): metadata is Metadata {
+	if (typeof metadata !== 'object' || metadata === null) throw new Error('Invalid metadata.json file format');
+	if (typeof metadata?.subreddit !== 'string')
+		throw new Error('Invalid metadata: subreddit missing or is not a string');
+	if (!('listing' in metadata) || !enumHasValue(Listing, metadata.listing))
+		throw new Error('Invalid metadata: listing missing or is not a valid listing');
+	if (typeof metadata?.num_posts !== 'number')
+		throw new Error('Invalid metadata: num_posts missing or is not a number');
 
 	metadata.numPosts = metadata.num_posts;
 	delete metadata.num_posts;
 
 	if (metadata.listing === Listing.TOP || metadata.listing === Listing.CONTROVERSIAL) {
-		if (!('time_filter' in metadata) || !enumHasValue(TimeFilter, metadata.time_filter)) return false;
+		if (!('time_filter' in metadata) || !enumHasValue(TimeFilter, metadata.time_filter))
+			throw new Error('Invalid metadata: time_filter missing or is not a valid time filter');
 		metadata.timeFilter = metadata.time_filter;
 		delete metadata.time_filter;
 	}

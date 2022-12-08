@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import FilePicker from './components/common/FilePicker';
 import Rozette from './components/common/Rozette';
 import MetadataDisplay from './components/MetadataDisplay';
+import TreeDisplay from './components/TreeDisplay';
+import { DeclatNode } from './model/node/DeclatNode';
 
 const Application = () => {
 	const [files, setFiles] = useState<File[]>([]);
@@ -13,7 +15,6 @@ const Application = () => {
 	const [declatTreeFile, setDeclatTreeFile] = useState<File | null>(null);
 
 	const handleFilesChange = (files: File[]) => {
-		console.log(files);
 		setFiles(files);
 	};
 
@@ -28,7 +29,7 @@ const Application = () => {
 				case 'metadata.json':
 					metadataFile = file;
 					break;
-				case 'declat-tree.json':
+				case 'declat.json':
 					declatTreeFile = file;
 					break;
 				case 'data.json':
@@ -64,7 +65,9 @@ const Application = () => {
 			>
 				<Rozette title="Tokens map">Hello</Rozette>
 				<Rozette title="Data">Hello</Rozette>
-				<Rozette title="Declat tree">Hello</Rozette>
+				<Rozette title="Declat tree">
+					<TreeDisplay treeFile={declatTreeFile} NodeClass={DeclatNode} />
+				</Rozette>
 			</div>
 		</div>
 	);

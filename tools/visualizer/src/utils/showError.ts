@@ -1,9 +1,9 @@
 import { Store } from 'react-notifications-component';
 
-export function showFileError(file: string) {
+export function showFileError(message: string) {
 	Store.addNotification({
 		title: 'Invalid file format!',
-		message: 'Cannot read file: ' + file,
+		message: message,
 		type: 'danger',
 		insert: 'top',
 		container: 'top-right',

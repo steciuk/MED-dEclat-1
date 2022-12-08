@@ -14,6 +14,7 @@ const Rozette = (props: { children: ReactNode; title: string }) => {
 				flexGrow: hidden ? '0' : '1',
 				display: 'flex',
 				border: 'solid 1px gray',
+				flexBasis: '0',
 			}}
 		>
 			<div
