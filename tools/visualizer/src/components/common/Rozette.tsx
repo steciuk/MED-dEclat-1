@@ -4,8 +4,16 @@ import React, { ReactNode, useState } from 'react';
 
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
-const Rozette = (props: { children: ReactNode; title: string }) => {
-	const [hidden, setHidden] = useState<boolean>(false);
+const Rozette = ({
+	children,
+	title,
+	defaultHidden = false,
+}: {
+	children: ReactNode;
+	title: string;
+	defaultHidden?: boolean;
+}) => {
+	const [hidden, setHidden] = useState<boolean>(defaultHidden);
 
 	return (
 		<div
@@ -30,10 +38,10 @@ const Rozette = (props: { children: ReactNode; title: string }) => {
 			>
 				<ArrowForwardIosIcon className={`arrow-icon ${hidden ? 'rotated' : ''}`} />
 				<div style={{ writingMode: 'vertical-lr', textAlign: 'center', margin: 'auto 0' }}>
-					<b>{props.title}</b>
+					<b>{title}</b>
 				</div>
 			</div>
-			<div style={{ flexGrow: '1', display: hidden ? 'none' : 'block' }}>{props.children}</div>
+			<div style={{ flexGrow: '1', display: hidden ? 'none' : 'block' }}>{children}</div>
 		</div>
 	);
 };

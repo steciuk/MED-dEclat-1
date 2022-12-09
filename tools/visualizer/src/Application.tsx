@@ -72,10 +72,10 @@ const Application = () => {
 					boxShadow: '8px 8px 24px 0px rgba(66, 68, 90, 1)',
 				}}
 			>
-				<Rozette title="Tokens map">
+				<Rozette title="Tokens map" defaultHidden={true}>
 					<TokenMapDisplay tokenMapFile={tokensMapFile} />
 				</Rozette>
-				<Rozette title="Data">
+				<Rozette title="Data" defaultHidden={true}>
 					<DataDisplay dataFile={dataFile} />
 				</Rozette>
 				<Rozette title="Declat tree">
