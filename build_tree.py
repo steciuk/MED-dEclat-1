@@ -1,16 +1,19 @@
 import json
+from typing import Literal, Union
 
 import click
 import pandas as pd
 
+Algorithm = Union[Literal["eclat"], Literal["declat"]]
 
-class DeclatNode:
+
+class TreeNode:
     def __init__(self, tokens_ids: list[int], support: int, id_set: set[int]) -> None:
         self.tokens_ids: list[int] = tokens_ids
         self.tokens: list[str] = []
         self.support: int = support
         self.id_set: set[int] = id_set
-        self.children: list[DeclatNode] = []
+        self.children: list[TreeNode] = []
 
     def __repr__(self, layer=0) -> str:
         repr: str = "  " * layer
@@ -24,7 +27,7 @@ class DeclatNode:
         return self.__repr__()
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, DeclatNode):
+        if not isinstance(other, TreeNode):
             return False
 
         return (
@@ -33,7 +36,7 @@ class DeclatNode:
             and self.id_set == other.id_set
         )
 
-    def add_child(self, child: "DeclatNode") -> None:
+    def add_child(self, child: "TreeNode") -> None:
         self.children.append(child)
 
     def decode(self, tokens_map: dict[int, str]) -> None:
@@ -42,9 +45,9 @@ class DeclatNode:
             child.decode(tokens_map)
 
 
-class DeclatJSONEncoder(json.JSONEncoder):
+class TreeJSONEncoder(json.JSONEncoder):
     def default(self, o: object) -> object:
-        if isinstance(o, DeclatNode):
+        if isinstance(o, TreeNode):
             return o.__dict__
         if isinstance(o, set):
             return list(o)
@@ -95,7 +98,8 @@ def validate_tokens_map(tokens_map_df: pd.DataFrame) -> None:
         raise ValueError("Duplicate tokens ids found in tokens_map.json")
 
 
-def get_id_sets_map(
+# DECLAT
+def get_dif_sets_map(
     data: dict[int, list[int]], all_tokens_ids: set[int]
 ) -> dict[int, set[int]]:
     dif_map: dict[int, set[int]] = {token_id: set() for token_id in all_tokens_ids}
@@ -109,22 +113,22 @@ def get_id_sets_map(
 
 def build_declat_root(
     id_sets_map: dict[int, set[int]], num_transactions: int, min_support: int
-) -> DeclatNode:
-    declat_tree: DeclatNode = DeclatNode([], num_transactions, set())
+) -> TreeNode:
+    declat_tree: TreeNode = TreeNode([], num_transactions, set())
 
     for token_id, dif_list in id_sets_map.items():
         node_support: int = num_transactions - len(dif_list)
         if node_support > min_support:
-            declat_tree.add_child(DeclatNode([token_id], node_support, dif_list))
+            declat_tree.add_child(TreeNode([token_id], node_support, dif_list))
 
     return declat_tree
 
 
-def build_declat_tree(layer: list[DeclatNode], min_support) -> None:
+def build_declat_tree(layer: list[TreeNode], min_support) -> None:
     if len(layer) == 0:
         return
 
-    new_layer: list[DeclatNode] = []
+    new_layer: list[TreeNode] = []
 
     for i, node in enumerate(layer):
         for other_node in layer[i + 1 :]:
@@ -132,7 +136,7 @@ def build_declat_tree(layer: list[DeclatNode], min_support) -> None:
                 new_id_set: set[int] = other_node.id_set - node.id_set
                 new_support: int = node.support - len(new_id_set)
                 if new_support > min_support:
-                    new_node: DeclatNode = DeclatNode(
+                    new_node: TreeNode = TreeNode(
                         node.tokens_ids + [other_node.tokens_ids[-1]],
                         new_support,
                         new_id_set,
@@ -143,13 +147,66 @@ def build_declat_tree(layer: list[DeclatNode], min_support) -> None:
     build_declat_tree(new_layer, min_support)
 
 
-def save_declat_tree(declat_tree: DeclatNode, directory: str, min_support: int) -> None:
+# ECLAT
+def get_tid_sets_map(
+    data: dict[int, list[int]], all_tokens_ids: set[int]
+) -> dict[int, set[int]]:
+    tid_map: dict[int, set[int]] = {token_id: set() for token_id in all_tokens_ids}
+    for transaction_id, tokens_ids in data.items():
+        for token_id in tokens_ids:
+            tid_map[token_id].add(transaction_id)
+
+    return tid_map
+
+
+def build_eclat_root(
+    id_sets_map: dict[int, set[int]],
+    num_transactions: int,
+    min_support: int,
+    all_tokens_ids: set[int],
+) -> TreeNode:
+    eclat_tree: TreeNode = TreeNode([], num_transactions, all_tokens_ids)
+
+    for token_id, tid_list in id_sets_map.items():
+        node_support: int = len(tid_list)
+        if node_support > min_support:
+            eclat_tree.add_child(TreeNode([token_id], node_support, tid_list))
+
+    return eclat_tree
+
+
+def build_eclat_tree(layer: list[TreeNode], min_support) -> None:
+    if len(layer) == 0:
+        return
+
+    new_layer: list[TreeNode] = []
+
+    for i, node in enumerate(layer):
+        for other_node in layer[i + 1 :]:
+            if node.tokens_ids[:-1] == other_node.tokens_ids[:-1]:
+                new_id_set: set[int] = node.id_set & other_node.id_set
+                new_support: int = len(new_id_set)
+                if new_support > min_support:
+                    new_node: TreeNode = TreeNode(
+                        node.tokens_ids + [other_node.tokens_ids[-1]],
+                        new_support,
+                        new_id_set,
+                    )
+                    node.add_child(new_node)
+                    new_layer.append(new_node)
+
+    build_eclat_tree(new_layer, min_support)
+
+
+def save_tree(
+    declat_tree: TreeNode, directory: str, min_support: int, algorithm: Algorithm
+) -> None:
     result = {"min_support": min_support, "tree": declat_tree}
-    with open(f"{directory}/declat.json", "w") as file:
-        json.dump(result, file, indent=2, cls=DeclatJSONEncoder)
+    with open(f"{directory}/{algorithm}.json", "w") as file:
+        json.dump(result, file, indent=2, cls=TreeJSONEncoder)
 
 
-def declat(directory: str, min_support: int) -> None:
+def build_tree(directory: str, min_support: int, algorithm: Algorithm) -> None:
     print("Reading data...")
     data_df, tokens_map_df = load_data(directory)
 
@@ -166,25 +223,39 @@ def declat(directory: str, min_support: int) -> None:
         transaction_id: row["tokens"] for transaction_id, row in data_df.iterrows()
     }
 
-    print("Creating dif-sets...")
-    id_sets_map: dict[int, set[int]] = get_id_sets_map(data, all_tokens_ids)
     num_transactions: int = len(data)
+    tree: Union[TreeNode, None] = None
 
-    print("Building declat root...")
-    declat_tree: DeclatNode = build_declat_root(
-        id_sets_map, num_transactions, min_support
-    )
+    if algorithm == "declat":
+        print("Creating dif-sets...")
+        dif_sets_map: dict[int, set[int]] = get_dif_sets_map(data, all_tokens_ids)
 
-    print("Building declat tree...")
-    build_declat_tree(declat_tree.children, min_support)
+        print(f"Building {algorithm} root...")
+        tree = build_declat_root(dif_sets_map, num_transactions, min_support)
+
+        print(f"Building {algorithm} tree...")
+        build_declat_tree(tree.children, min_support)
+    elif algorithm == "eclat":
+        print("Creating tid-sets...")
+        tid_sets_map: dict[int, set[int]] = get_tid_sets_map(data, all_tokens_ids)
+
+        print(f"Building {algorithm} root...")
+        tree = build_eclat_root(
+            tid_sets_map, num_transactions, min_support, all_tokens_ids
+        )
+
+        print(f"Building {algorithm} tree...")
+        build_eclat_tree(tree.children, min_support)
+    else:
+        raise ValueError(f"Unknown algorithm {algorithm}")
 
     print("Decoding tokens...")
-    declat_tree.decode(tokens_map)
+    tree.decode(tokens_map)
 
-    print("Saving declat tree...")
-    save_declat_tree(declat_tree, directory, min_support)
+    print(f"Saving {algorithm} tree...")
+    save_tree(tree, directory, min_support, algorithm)
 
-    print(f"All good! Declat tree saved to {directory}/declat.json")
+    print(f"All good! Declat tree saved to {directory}/{algorithm}.json")
 
 
 @click.command()
@@ -202,9 +273,17 @@ def declat(directory: str, min_support: int) -> None:
     type=click.IntRange(min=1),
     help="Minimum support for frequent itemsets",
 )
-def declat_cli(directory: str, support: int) -> None:
-    declat(directory, support)
+@click.option(
+    "-a",
+    "--algorithm",
+    default="declat",
+    show_default=True,
+    type=click.Choice(["declat", "eclat"]),
+    help="Algorithm to run",
+)
+def build_tree_cli(directory: str, support: int, algorithm: Algorithm) -> None:
+    build_tree(directory, support, algorithm)
 
 
 if __name__ == "__main__":
-    declat_cli()
+    build_tree_cli()
