@@ -9,7 +9,7 @@ import FileNotSelected from './common/FileNotSelected';
 
 const TreeDisplay = <T extends TreeNodeConstructorType>(props: { treeFile: File | null; NodeClass: T }) => {
 	const [treeRoot, setTreeRoot] = useState<TreeNode | null>(null);
-	const [minSupport, setMinSupport] = useState<number>(0);
+	const [minSupport, setMinSupport] = useState<number>(0); // TODO: display this somewhere
 
 	const onFileRead = (content: string) => {
 		let treeRootObj: any = null;

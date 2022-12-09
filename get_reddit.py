@@ -119,6 +119,10 @@ def get_reddit_data(
     else:
         print("Invalid listing type")
 
+    if len(posts) < num_posts:
+        print(f"WARNING: Only {len(posts)} posts found")
+        num_posts = len(posts)
+
     data_df = pd.DataFrame(
         [[post.title, None] for post in posts], columns=["title", "tokens"]
     )

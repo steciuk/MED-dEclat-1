@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 
 import FilePicker from './components/common/FilePicker';
 import Rozette from './components/common/Rozette';
+import DataDisplay from './components/DataDisplay';
 import MetadataDisplay from './components/MetadataDisplay';
+import TokenMapDisplay from './components/TokenMapDisplay';
 import TreeDisplay from './components/TreeDisplay';
 import { DeclatNode } from './model/node/DeclatNode';
 
@@ -35,7 +37,7 @@ const Application = () => {
 				case 'data.json':
 					dataFile = file;
 					break;
-				case 'tokens-map.json':
+				case 'tokens_map.json':
 					tokensMapFile = file;
 					break;
 			}
@@ -63,8 +65,12 @@ const Application = () => {
 					boxShadow: '8px 8px 24px 0px rgba(66, 68, 90, 1)',
 				}}
 			>
-				<Rozette title="Tokens map">Hello</Rozette>
-				<Rozette title="Data">Hello</Rozette>
+				<Rozette title="Tokens map">
+					<TokenMapDisplay tokenMapFile={tokensMapFile} />
+				</Rozette>
+				<Rozette title="Data">
+					<DataDisplay dataFile={dataFile} />
+				</Rozette>
 				<Rozette title="Declat tree">
 					<TreeDisplay treeFile={declatTreeFile} NodeClass={DeclatNode} />
 				</Rozette>
