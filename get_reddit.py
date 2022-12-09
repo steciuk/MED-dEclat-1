@@ -119,6 +119,7 @@ def get_reddit_data(
     else:
         print("Invalid listing type")
 
+    posts = list(posts)
     if len(posts) < num_posts:
         print(f"WARNING: Only {len(posts)} posts found")
         num_posts = len(posts)

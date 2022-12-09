@@ -260,17 +260,14 @@ def test_build_eclat_root() -> None:
         2: {0, 1, 2, 4},
         3: {4},
     }
-    num_transactions: int = 5
-    all_tokens_ids: set[int] = {0, 1, 2, 3}
+    all_transaction_ids: set[int] = {0, 1, 2, 3, 4}
     min_support: int = 2
 
-    root: TreeNode = build_eclat_root(
-        tid_sets_map, num_transactions, min_support, all_tokens_ids
-    )
+    root: TreeNode = build_eclat_root(tid_sets_map, min_support, all_transaction_ids)
 
     assert root.tokens_ids == []
     assert root.support == 5
-    assert root.id_set == {0, 1, 2, 3}
+    assert root.id_set == {0, 1, 2, 3, 4}
 
     assert root.children == [
         TreeNode([0], 4, {0, 1, 2, 3}),
@@ -287,19 +284,16 @@ def test_build_eclat_tree() -> None:
         2: {0, 1, 2, 4},
         3: {4},
     }
-    num_transactions: int = 5
-    all_tokens_ids: set[int] = {0, 1, 2, 3}
+    all_transaction_ids: set[int] = {0, 1, 2, 3, 4}
     min_support: int = 2
 
-    root: TreeNode = build_eclat_root(
-        tid_sets_map, num_transactions, min_support, all_tokens_ids
-    )
+    root: TreeNode = build_eclat_root(tid_sets_map, min_support, all_transaction_ids)
 
     build_eclat_tree(root.children, min_support)
 
     assert root.tokens_ids == []
     assert root.support == 5
-    assert root.id_set == {0, 1, 2, 3}
+    assert root.id_set == {0, 1, 2, 3, 4}
     assert root.children == [
         TreeNode([0], 4, {0, 1, 2, 3}),
         TreeNode([1], 5, {0, 1, 2, 3, 4}),

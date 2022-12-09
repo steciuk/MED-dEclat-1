@@ -161,11 +161,10 @@ def get_tid_sets_map(
 
 def build_eclat_root(
     id_sets_map: dict[int, set[int]],
-    num_transactions: int,
     min_support: int,
-    all_tokens_ids: set[int],
+    all_transaction_ids: set[int],
 ) -> TreeNode:
-    eclat_tree: TreeNode = TreeNode([], num_transactions, all_tokens_ids)
+    eclat_tree: TreeNode = TreeNode([], len(all_transaction_ids), all_transaction_ids)
 
     for token_id, tid_list in id_sets_map.items():
         node_support: int = len(tid_list)
@@ -240,9 +239,7 @@ def build_tree(directory: str, min_support: int, algorithm: Algorithm) -> None:
         tid_sets_map: dict[int, set[int]] = get_tid_sets_map(data, all_tokens_ids)
 
         print(f"Building {algorithm} root...")
-        tree = build_eclat_root(
-            tid_sets_map, num_transactions, min_support, all_tokens_ids
-        )
+        tree = build_eclat_root(tid_sets_map, min_support, set(data.keys()))
 
         print(f"Building {algorithm} tree...")
         build_eclat_tree(tree.children, min_support)
