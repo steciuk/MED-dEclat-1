@@ -1,0 +1,8 @@
+.arrow-icon {
+	font-size: 1.2rem;
+	margin-top: 0.5rem;
+}
+
+.arrow-icon.rotated {
+	transform: rotate(90deg);
+}

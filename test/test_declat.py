@@ -5,7 +5,7 @@ from declat import (
     DeclatNode,
     build_declat_root,
     build_declat_tree,
-    get_dif_sets_map,
+    get_id_sets_map,
     load_data,
     validate_data,
     validate_tokens_map,
@@ -103,8 +103,8 @@ def test_validate_tokens_map() -> None:
     validate_tokens_map(tokens_map_df)
 
 
-# get_dif_sets_map
-def test_get_dif_sets_map() -> None:
+# get_id_sets_map
+def test_get_id_sets_map() -> None:
     data: dict[int, list[int]] = {
         0: [0, 1, 2],
         1: [0, 1, 2],
@@ -114,28 +114,28 @@ def test_get_dif_sets_map() -> None:
     }
     all_tokens_ids: set[int] = {0, 1, 2, 3}
 
-    dif_sets_map: dict[int, set[int]] = get_dif_sets_map(data, all_tokens_ids)
+    id_sets_map: dict[int, set[int]] = get_id_sets_map(data, all_tokens_ids)
 
-    assert dif_sets_map == {0: {4}, 1: set(), 2: {3}, 3: {0, 1, 2, 3}}
+    assert id_sets_map == {0: {4}, 1: set(), 2: {3}, 3: {0, 1, 2, 3}}
 
 
 # DeclatNode
 def test_DeclatNode() -> None:
     tokens_ids: list[int] = [0, 1]
     support: int = 4
-    dif_set: set[int] = set()
-    node: DeclatNode = DeclatNode(tokens_ids, support, dif_set)
+    id_set: set[int] = set()
+    node: DeclatNode = DeclatNode(tokens_ids, support, id_set)
 
     tokens_ids = [0, 1, 2]
     support = 3
-    dif_set = {3}
-    child: DeclatNode = DeclatNode(tokens_ids, support, dif_set)
+    id_set = {3}
+    child: DeclatNode = DeclatNode(tokens_ids, support, id_set)
 
     node.add_child(child)
 
     assert node.tokens_ids == [0, 1]
     assert node.support == 4
-    assert node.dif_set == set()
+    assert node.id_set == set()
     assert node.children == [child]
     assert node.tokens == []
 
@@ -154,15 +154,15 @@ def test_DeclatNode() -> None:
 # build_declat_root
 def test_build_declat_root() -> None:
     empty_set: set[int] = set()
-    dif_sets_map: dict[int, set[int]] = {0: {4}, 1: empty_set, 2: {3}, 3: {0, 1, 2, 3}}
+    id_sets_map: dict[int, set[int]] = {0: {4}, 1: empty_set, 2: {3}, 3: {0, 1, 2, 3}}
     num_transactions: int = 5
     min_support: int = 2
 
-    root: DeclatNode = build_declat_root(dif_sets_map, num_transactions, min_support)
+    root: DeclatNode = build_declat_root(id_sets_map, num_transactions, min_support)
 
     assert root.tokens_ids == []
     assert root.support == 5
-    assert root.dif_set == set()
+    assert root.id_set == set()
     assert root.children == [
         DeclatNode([0], 4, {4}),
         DeclatNode([1], 5, set()),
@@ -173,17 +173,17 @@ def test_build_declat_root() -> None:
 # build_declat_tree
 def test_build_declat_tree() -> None:
     empty_set: set[int] = set()
-    dif_sets_map: dict[int, set[int]] = {0: {4}, 1: empty_set, 2: {3}, 3: {0, 1, 2, 3}}
+    id_sets_map: dict[int, set[int]] = {0: {4}, 1: empty_set, 2: {3}, 3: {0, 1, 2, 3}}
     num_transactions: int = 5
     min_support: int = 2
 
-    root: DeclatNode = build_declat_root(dif_sets_map, num_transactions, min_support)
+    root: DeclatNode = build_declat_root(id_sets_map, num_transactions, min_support)
 
     build_declat_tree(root.children, min_support)
 
     assert root.tokens_ids == []
     assert root.support == 5
-    assert root.dif_set == set()
+    assert root.id_set == set()
     assert root.children == [
         DeclatNode([0], 4, {4}),
         DeclatNode([1], 5, set()),
@@ -192,7 +192,7 @@ def test_build_declat_tree() -> None:
 
     assert root.children[0].tokens_ids == [0]
     assert root.children[0].support == 4
-    assert root.children[0].dif_set == {4}
+    assert root.children[0].id_set == {4}
     assert root.children[0].children == [
         DeclatNode([0, 1], 4, set()),
         DeclatNode([0, 2], 3, {3}),
@@ -200,29 +200,29 @@ def test_build_declat_tree() -> None:
 
     assert root.children[1].tokens_ids == [1]
     assert root.children[1].support == 5
-    assert root.children[1].dif_set == set()
+    assert root.children[1].id_set == set()
     assert root.children[1].children == [
         DeclatNode([1, 2], 4, {3}),
     ]
 
     assert root.children[2].tokens_ids == [2]
     assert root.children[2].support == 4
-    assert root.children[2].dif_set == {3}
+    assert root.children[2].id_set == {3}
     assert root.children[2].children == []
 
     assert root.children[0].children[0].tokens_ids == [0, 1]
     assert root.children[0].children[0].support == 4
-    assert root.children[0].children[0].dif_set == set()
+    assert root.children[0].children[0].id_set == set()
     assert root.children[0].children[0].children == [
         DeclatNode([0, 1, 2], 3, {3}),
     ]
 
     assert root.children[0].children[1].tokens_ids == [0, 2]
     assert root.children[0].children[1].support == 3
-    assert root.children[0].children[1].dif_set == {3}
+    assert root.children[0].children[1].id_set == {3}
     assert root.children[0].children[1].children == []
 
     assert root.children[1].children[0].tokens_ids == [1, 2]
     assert root.children[1].children[0].support == 4
-    assert root.children[1].children[0].dif_set == {3}
+    assert root.children[1].children[0].id_set == {3}
     assert root.children[1].children[0].children == []

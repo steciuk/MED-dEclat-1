@@ -5,11 +5,11 @@ import pandas as pd
 
 
 class DeclatNode:
-    def __init__(self, tokens_ids: list[int], support: int, dif_set: set[int]) -> None:
+    def __init__(self, tokens_ids: list[int], support: int, id_set: set[int]) -> None:
         self.tokens_ids: list[int] = tokens_ids
         self.tokens: list[str] = []
         self.support: int = support
-        self.dif_set: set[int] = dif_set
+        self.id_set: set[int] = id_set
         self.children: list[DeclatNode] = []
 
     def __repr__(self, layer=0) -> str:
@@ -30,7 +30,7 @@ class DeclatNode:
         return (
             self.tokens_ids == other.tokens_ids
             and self.support == other.support
-            and self.dif_set == other.dif_set
+            and self.id_set == other.id_set
         )
 
     def add_child(self, child: "DeclatNode") -> None:
@@ -95,7 +95,7 @@ def validate_tokens_map(tokens_map_df: pd.DataFrame) -> None:
         raise ValueError("Duplicate tokens ids found in tokens_map.json")
 
 
-def get_dif_sets_map(
+def get_id_sets_map(
     data: dict[int, list[int]], all_tokens_ids: set[int]
 ) -> dict[int, set[int]]:
     dif_map: dict[int, set[int]] = {token_id: set() for token_id in all_tokens_ids}
@@ -108,11 +108,11 @@ def get_dif_sets_map(
 
 
 def build_declat_root(
-    dif_sets_map: dict[int, set[int]], num_transactions: int, min_support: int
+    id_sets_map: dict[int, set[int]], num_transactions: int, min_support: int
 ) -> DeclatNode:
     declat_tree: DeclatNode = DeclatNode([], num_transactions, set())
 
-    for token_id, dif_list in dif_sets_map.items():
+    for token_id, dif_list in id_sets_map.items():
         node_support: int = num_transactions - len(dif_list)
         if node_support > min_support:
             declat_tree.add_child(DeclatNode([token_id], node_support, dif_list))
@@ -129,13 +129,13 @@ def build_declat_tree(layer: list[DeclatNode], min_support) -> None:
     for i, node in enumerate(layer):
         for other_node in layer[i + 1 :]:
             if node.tokens_ids[:-1] == other_node.tokens_ids[:-1]:
-                new_dif_set: set[int] = other_node.dif_set - node.dif_set
-                new_support: int = node.support - len(new_dif_set)
+                new_id_set: set[int] = other_node.id_set - node.id_set
+                new_support: int = node.support - len(new_id_set)
                 if new_support > min_support:
                     new_node: DeclatNode = DeclatNode(
                         node.tokens_ids + [other_node.tokens_ids[-1]],
                         new_support,
-                        new_dif_set,
+                        new_id_set,
                     )
                     node.add_child(new_node)
                     new_layer.append(new_node)
@@ -167,12 +167,12 @@ def declat(directory: str, min_support: int) -> None:
     }
 
     print("Creating dif-sets...")
-    dif_sets_map: dict[int, set[int]] = get_dif_sets_map(data, all_tokens_ids)
+    id_sets_map: dict[int, set[int]] = get_id_sets_map(data, all_tokens_ids)
     num_transactions: int = len(data)
 
     print("Building declat root...")
     declat_tree: DeclatNode = build_declat_root(
-        dif_sets_map, num_transactions, min_support
+        id_sets_map, num_transactions, min_support
     )
 
     print("Building declat tree...")
