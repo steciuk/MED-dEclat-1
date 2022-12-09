@@ -7,6 +7,7 @@ import MetadataDisplay from './components/MetadataDisplay';
 import TokenMapDisplay from './components/TokenMapDisplay';
 import TreeDisplay from './components/TreeDisplay';
 import { DeclatNode } from './model/node/DeclatNode';
+import { EclatNode } from './model/node/EclatNode';
 
 const Application = () => {
 	const [files, setFiles] = useState<File[]>([]);
@@ -15,6 +16,7 @@ const Application = () => {
 	const [tokensMapFile, setTokensMapFile] = useState<File | null>(null);
 	const [metadataFile, setMetadataFile] = useState<File | null>(null);
 	const [declatTreeFile, setDeclatTreeFile] = useState<File | null>(null);
+	const [eclatTreeFile, setEclatTreeFile] = useState<File | null>(null);
 
 	const handleFilesChange = (files: File[]) => {
 		setFiles(files);
@@ -23,6 +25,7 @@ const Application = () => {
 	useEffect(() => {
 		let metadataFile: File | null = null;
 		let declatTreeFile: File | null = null;
+		let eclatTreeFile: File | null = null;
 		let dataFile: File | null = null;
 		let tokensMapFile: File | null = null;
 
@@ -33,6 +36,9 @@ const Application = () => {
 					break;
 				case 'declat.json':
 					declatTreeFile = file;
+					break;
+				case 'eclat.json':
+					eclatTreeFile = file;
 					break;
 				case 'data.json':
 					dataFile = file;
@@ -49,6 +55,7 @@ const Application = () => {
 		setTokensMapFile(tokensMapFile);
 		setMetadataFile(metadataFile);
 		setDeclatTreeFile(declatTreeFile);
+		setEclatTreeFile(eclatTreeFile);
 	}, [files]);
 
 	return (
@@ -73,6 +80,9 @@ const Application = () => {
 				</Rozette>
 				<Rozette title="Declat tree">
 					<TreeDisplay treeFile={declatTreeFile} NodeClass={DeclatNode} />
+				</Rozette>
+				<Rozette title="Eclat tree">
+					<TreeDisplay treeFile={eclatTreeFile} NodeClass={EclatNode} />
 				</Rozette>
 			</div>
 		</div>
