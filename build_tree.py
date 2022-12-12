@@ -55,6 +55,17 @@ class TreeJSONEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
+class IdSetsLengthStats:
+    def __init__(
+        self, num_nodes: int, min: int, max: int, avg: float, median: int
+    ) -> None:
+        self.num_nodes: int = num_nodes
+        self.min: int = min
+        self.max: int = max
+        self.avg: float = avg
+        self.median: int = median
+
+
 def load_data(directory: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     try:
         tokens_map_df: pd.DataFrame = pd.read_json(
@@ -112,19 +123,25 @@ def get_dif_sets_map(
 
 
 def build_declat_root(
-    id_sets_map: dict[int, set[int]], num_transactions: int, min_support: int
+    id_sets_map: dict[int, set[int]],
+    num_transactions: int,
+    min_support: int,
+    id_sets_lengths: list[int] = [],
 ) -> TreeNode:
     declat_tree: TreeNode = TreeNode([], num_transactions, set())
 
     for token_id, dif_list in id_sets_map.items():
         node_support: int = num_transactions - len(dif_list)
         if node_support > min_support:
+            id_sets_lengths.append(len(dif_list))
             declat_tree.add_child(TreeNode([token_id], node_support, dif_list))
 
     return declat_tree
 
 
-def build_declat_tree(layer: list[TreeNode], min_support) -> None:
+def build_declat_tree(
+    layer: list[TreeNode], min_support, id_sets_lengths: list[int] = []
+) -> None:
     if len(layer) == 0:
         return
 
@@ -136,6 +153,7 @@ def build_declat_tree(layer: list[TreeNode], min_support) -> None:
                 new_id_set: set[int] = other_node.id_set - node.id_set
                 new_support: int = node.support - len(new_id_set)
                 if new_support > min_support:
+                    id_sets_lengths.append(len(new_id_set))
                     new_node: TreeNode = TreeNode(
                         node.tokens_ids + [other_node.tokens_ids[-1]],
                         new_support,
@@ -163,18 +181,22 @@ def build_eclat_root(
     id_sets_map: dict[int, set[int]],
     min_support: int,
     all_transaction_ids: set[int],
+    id_sets_lengths: list[int] = [],
 ) -> TreeNode:
     eclat_tree: TreeNode = TreeNode([], len(all_transaction_ids), all_transaction_ids)
 
     for token_id, tid_list in id_sets_map.items():
         node_support: int = len(tid_list)
         if node_support > min_support:
+            id_sets_lengths.append(len(tid_list))
             eclat_tree.add_child(TreeNode([token_id], node_support, tid_list))
 
     return eclat_tree
 
 
-def build_eclat_tree(layer: list[TreeNode], min_support) -> None:
+def build_eclat_tree(
+    layer: list[TreeNode], min_support, id_sets_lengths: list[int] = []
+) -> None:
     if len(layer) == 0:
         return
 
@@ -186,6 +208,7 @@ def build_eclat_tree(layer: list[TreeNode], min_support) -> None:
                 new_id_set: set[int] = node.id_set & other_node.id_set
                 new_support: int = len(new_id_set)
                 if new_support > min_support:
+                    id_sets_lengths.append(len(new_id_set))
                     new_node: TreeNode = TreeNode(
                         node.tokens_ids + [other_node.tokens_ids[-1]],
                         new_support,
@@ -198,14 +221,36 @@ def build_eclat_tree(layer: list[TreeNode], min_support) -> None:
 
 
 def save_tree(
-    declat_tree: TreeNode, directory: str, min_support: int, algorithm: Algorithm
+    declat_tree: TreeNode,
+    directory: str,
+    min_support: int,
+    algorithm: Algorithm,
+    id_sets_length_stats: IdSetsLengthStats,
 ) -> None:
-    result = {"min_support": min_support, "tree": declat_tree}
+    result = {
+        "min_support": min_support,
+        "id_sets_length_stats": id_sets_length_stats.__dict__,
+        "tree": declat_tree,
+    }
     with open(f"{directory}/{algorithm}.json", "w") as file:
         json.dump(result, file, indent=2, cls=TreeJSONEncoder)
 
 
-def build_tree(directory: str, min_support: int, algorithm: Algorithm) -> None:
+def calculate_statistics(id_sets_lengths: list[int]) -> IdSetsLengthStats:
+    id_sets_lengths.sort()
+    num_id_sets: int = len(id_sets_lengths)
+    return IdSetsLengthStats(
+        num_nodes=num_id_sets,
+        min=id_sets_lengths[0] if num_id_sets > 0 else 0,
+        max=id_sets_lengths[-1] if num_id_sets > 0 else 0,
+        avg=sum(id_sets_lengths) / num_id_sets if num_id_sets > 0 else 0,
+        median=id_sets_lengths[num_id_sets // 2] if num_id_sets > 0 else 0,
+    )
+
+
+def build_tree(
+    directory: str, min_support: int, algorithm: Algorithm
+) -> tuple[TreeNode, IdSetsLengthStats]:
     print("Reading data...")
     data_df, tokens_map_df = load_data(directory)
 
@@ -224,35 +269,40 @@ def build_tree(directory: str, min_support: int, algorithm: Algorithm) -> None:
 
     num_transactions: int = len(data)
     tree: Union[TreeNode, None] = None
+    id_sets_lengths: list[int] = []
 
     if algorithm == "declat":
         print("Creating dif-sets...")
         dif_sets_map: dict[int, set[int]] = get_dif_sets_map(data, all_tokens_ids)
 
         print(f"Building {algorithm} root...")
-        tree = build_declat_root(dif_sets_map, num_transactions, min_support)
+        tree = build_declat_root(
+            dif_sets_map, num_transactions, min_support, id_sets_lengths
+        )
 
         print(f"Building {algorithm} tree...")
-        build_declat_tree(tree.children, min_support)
+        build_declat_tree(tree.children, min_support, id_sets_lengths)
     elif algorithm == "eclat":
         print("Creating tid-sets...")
         tid_sets_map: dict[int, set[int]] = get_tid_sets_map(data, all_tokens_ids)
 
         print(f"Building {algorithm} root...")
-        tree = build_eclat_root(tid_sets_map, min_support, set(data.keys()))
+        tree = build_eclat_root(
+            tid_sets_map, min_support, set(data.keys()), id_sets_lengths
+        )
 
         print(f"Building {algorithm} tree...")
-        build_eclat_tree(tree.children, min_support)
+        build_eclat_tree(tree.children, min_support, id_sets_lengths)
     else:
         raise ValueError(f"Unknown algorithm {algorithm}")
 
     print("Decoding tokens...")
     tree.decode(tokens_map)
 
-    print(f"Saving {algorithm} tree...")
-    save_tree(tree, directory, min_support, algorithm)
+    print("Calculating statistics...")
+    statistics: IdSetsLengthStats = calculate_statistics(id_sets_lengths)
 
-    print(f"All good! Declat tree saved to {directory}/{algorithm}.json")
+    return tree, statistics
 
 
 @click.command()
@@ -279,7 +329,12 @@ def build_tree(directory: str, min_support: int, algorithm: Algorithm) -> None:
     help="Algorithm to run",
 )
 def build_tree_cli(directory: str, support: int, algorithm: Algorithm) -> None:
-    build_tree(directory, support, algorithm)
+    tree, statistics = build_tree(directory, support, algorithm)
+
+    print(f"Saving {algorithm} tree...")
+    save_tree(tree, directory, support, algorithm, statistics)
+
+    print(f"All good! Declat tree saved to {directory}/{algorithm}.json")
 
 
 if __name__ == "__main__":
