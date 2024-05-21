@@ -3,7 +3,7 @@
     "editor.defaultFormatter": "ms-python.python",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-        "source.addMissingImports": true
+        "source.addMissingImports": "explicit"
     },
     "editor.bracketPairColorization.enabled": true,
     "editor.guides.bracketPairs": true,
