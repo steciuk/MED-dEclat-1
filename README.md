@@ -180,7 +180,7 @@ The following files are generated in the specified format:
 }
 ```
 
-- `data.json
+- `data.json`
 
 ```json
 {
